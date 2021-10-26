@@ -24,8 +24,6 @@ namespace Website_Browser
 
         public ChromiumWebBrowser cefBrowser;
 
-        string html;
-
         public MainWindow()
         {
             InitializeComponent();

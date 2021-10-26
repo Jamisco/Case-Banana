@@ -135,8 +135,6 @@ namespace Case_Banana
                 return;
             }
 
-            System.Drawing.Image image = null;
-
             using (var stream = httpWebResponse.GetResponseStream())
             {
                 using (var fileStream = File.OpenWrite(saveFilename))
