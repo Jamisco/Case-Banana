@@ -24,6 +24,7 @@ namespace Case_Banana
         private static string MainHtml = "";
 
         static Application app;
+        static Task beginParse;
 
         // we need this to open the Website Browser
         [STAThread]
@@ -39,6 +40,9 @@ namespace Case_Banana
             app = new Application();
             app.Run(new MainWindow());
 
+            // wait for the parse method to finish, that we dont alert the user that the program is finished prematurely
+            beginParse.Wait();
+
             Console.WriteLine("\n\n\n" + "We are Done Here...");
             Console.ReadLine();
         }
@@ -52,9 +56,8 @@ namespace Case_Banana
                 // we have no more use for the application once the html has been retrieved
                 app.Shutdown();
             });
-               
 
-            parseHtml();
+            beginParse = Task.Factory.StartNew(() => parseHtml());
         }
 
         private static void parseHtml()
@@ -103,19 +106,18 @@ namespace Case_Banana
                 // removes all non alphanumeric character,
                 // we do this because we save the file using the title and file names cannot have certain characters
                 string tempFilePath = imageSavePath + System.Text.RegularExpressions.Regex.Replace(titles.Last(), "[^A-Za-z0-9 -]", "") + ".png";
-                //DownloadImageAsync(tempFilePath, imgUrl).Wait();
                 DownloadImage(imgUrl, tempFilePath);
-                // trying to download image, having weird 403 requiest denied error
+    
                 imgPath.Add(tempFilePath);
             }
 
-            StoreData(titles, prices, imgPath);
+             StoreData(titles, prices, imgPath);
 
             // Andddd Done
         }
 
-        private static string imageSavePath = "C:\\Users\\mufuh\\Documents\\Operation Butler\\Family Dollar Detergents Pictures\\";
-        private static string dataSavePath = "C:\\Users\\mufuh\\Documents\\Operation Butler\\Mr.Butler\\Test Data\\FD Detergents.json";
+        private static string imageSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Family Dollar Detergents Pictures\";
+        private static string dataSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Mr.Butler\Test Data\FD Detergents.json";
 
         // Code taken from here - https://codesnippets.fesslersoft.de/how-to-download-a-image-from-url-in-c-and-vb-net/
         private static void DownloadImage(string url, string saveFilename)
@@ -162,14 +164,13 @@ namespace Case_Banana
                 _data.Add(new data()
                 {
                     Title = titles[i],
-                    Price = prices[i],
+                    Price = prices[i],                  
                     ImagePath = imgPaths[i]
                 });
             }
 
             string json = JsonConvert.SerializeObject(_data, Formatting.Indented);
             File.WriteAllText(dataSavePath, json);
-
         }
        
         class data
