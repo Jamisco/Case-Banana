@@ -1,26 +1,18 @@
-﻿using System;
+﻿using Operation_Forage_V2;
+using SharedHtml;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
-using Operation_Forage_V2;
-using SharedHtml;
 using Website_Browser;
-using Newtonsoft.Json;
-using System.Net.Http;
 
 namespace Case_Banana
 {
     class Program
     {
-        private static Timer atimer = new Timer();
         private static string MainHtml = "";
 
         static Application app;
@@ -28,7 +20,7 @@ namespace Case_Banana
 
         // we need this to open the Website Browser
         [STAThread]
-        static void Main(string[] args)
+        static void Main()
         {
             Uri liquidDetergent = new Uri("https://www.familydollar.com/laundry-care/liquid-detergent-fd");
             Uri costcoBreakfast = new Uri("https://www.costco.com/breakfast.html");
@@ -57,15 +49,15 @@ namespace Case_Banana
                 app.Shutdown();
             });
 
-            beginParse = Task.Factory.StartNew(() => parseHtml());
+            beginParse = Task.Factory.StartNew(() => ParseHtml());
         }
 
-        private static void parseHtml()
+        private static void ParseHtml()
         {
             string htmlItemWrapper = "items-wrapper";
             string htmlProduct = "product";
 
-            string htmlTitle = "product-title";
+            //string htmlTitle = "product-title";
             string htmlProductImage = "product-image";
             string htmlPrice = "list-price-text";
 
@@ -89,12 +81,15 @@ namespace Case_Banana
                 file.Delete();
             }
 
+            int index = 0;
+
             foreach (HtmlParser productHtml in productClass)
             {
-                titles.Add(
-                    WebUtility.HtmlDecode(productHtml.GetElementByType(htmlTitle, HtmlParser.Type.Class)
-                     .GetElementByTagName("span").GetText())
-                    );
+                // Do not add Spaces in Path, makes life much more difficult
+                titles.Add("Picture" + index);
+                index++;
+
+                string fileName = titles.Last() + ".png";
 
                 prices.Add(productHtml.GetElementByType(htmlPrice, HtmlParser.Type.Class).GetText());
 
@@ -103,12 +98,11 @@ namespace Case_Banana
                     .GetElementByTagName("img")
                     .GetElementPropertyValue("data-src");
 
-                // removes all non alphanumeric character,
-                // we do this because we save the file using the title and file names cannot have certain characters
-                string tempFilePath = imageSavePath + System.Text.RegularExpressions.Regex.Replace(titles.Last(), "[^A-Za-z0-9 -]", "") + ".png";
+                string tempFilePath = imageSavePath + fileName;
                 DownloadImage(imgUrl, tempFilePath);
     
-                imgPath.Add(tempFilePath);
+                // since we are creating a js file, we will be using the local path
+                imgPath.Add("./Images/" + fileName);
             }
 
              StoreData(titles, prices, imgPath);
@@ -116,8 +110,8 @@ namespace Case_Banana
             // Andddd Done
         }
 
-        private static string imageSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Family Dollar Detergents Pictures\";
-        private static string dataSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Mr.Butler\Test Data\FD Detergents.json";
+        private static readonly string dataSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Mr.Butler\Test-Data\FD-DetergentInfo.js";
+        private static readonly string imageSavePath = @"C:\Users\mufuh\Documents\Operation Butler\Mr.Butler\Test-Data\Images\";
 
         // Code taken from here - https://codesnippets.fesslersoft.de/how-to-download-a-image-from-url-in-c-and-vb-net/
         private static void DownloadImage(string url, string saveFilename)
@@ -157,11 +151,11 @@ namespace Case_Banana
         }
         private static void StoreData(List<string> titles, List<string> prices, List<string> imgPaths)
         {
-            List<data> _data = new List<data>();
+            List<Data> _data = new List<Data>();
 
             for (int i = 0; i < titles.Count; i++)
             {
-                _data.Add(new data()
+                _data.Add(new Data()
                 {
                     Title = titles[i],
                     Price = prices[i],                  
@@ -169,15 +163,43 @@ namespace Case_Banana
                 });
             }
 
-            string json = JsonConvert.SerializeObject(_data, Formatting.Indented);
-            File.WriteAllText(dataSavePath, json);
+            string objectTitle = "DetergentInfo";
+
+            string JSObject = $"const {objectTitle} = [\n";
+
+            foreach (Data props in _data)
+            {
+                JSObject += props.CreateJSObject();
+            }
+
+            JSObject += $"];\n\nexport default {objectTitle};";
+
+            File.WriteAllText(dataSavePath, JSObject);
         }
-       
-        class data
+
+        private static string Indent(int count)
+        {
+            return new string(' ', count);
+        }
+
+        class Data
         {
             public string Title { get; set; }
             public string Price { get; set; }
             public string ImagePath { get; set; }
+            public string CreateJSObject()
+            {
+                string JSObject = "";
+
+                JSObject +=
+                    Indent(2) + "{\n" +
+                     Indent(4) + $"Title: '{Title}',\n" +
+                     Indent(4) + $"Price: '{Price}',\n" +
+                     Indent(4) + $"Image: require('{ImagePath}'),\n" +
+                   Indent(2) + "},\n";
+
+                return JSObject;
+            }
         }
     }
 }
